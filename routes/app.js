@@ -1,17 +1,35 @@
 const express = require('express');
+const validator = require('validator');
 const vuln_controller = require("../controllers/vuln_controller");
 const router = express.Router();
 const auth_controller = require('../controllers/auth_controller');
 const { authenticateToken } = require('../controllers/auth_controller');
 const { schema }  = require('../models/graphql-schema')
 const { graphqlHTTP } = require('express-graphql')
+// Input Validation Middleware
+const validateRegistration = (req, res, next) => {
+    const { username, password } = req.body;
 
+    // Check 1: Kya username khali to nahi ya us mein script tags hain?
+    if (!username || validator.isEmpty(username) || !validator.isAlphanumeric(username)) {
+        return res.status(400).send("Error: Username must contain only letters and numbers (No scripts allowed)!");
+    }
+
+    // Check 2: Weak Password check karna
+    if (!password || password.length < 6) {
+        return res.status(400).send("Error: Password must be at least 6 characters long!");
+    }
+
+    next(); // Agar sab theek hai to controller par bhej do
+};
 router.get('/', authenticateToken, vuln_controller.app_index);
 
+// router.route('/register')
+//     .get(auth_controller.register_get)
+//     .post(auth_controller.register_post);
 router.route('/register')
     .get(auth_controller.register_get)
-    .post(auth_controller.register_post);
-
+    .post(validateRegistration, auth_controller.register_post); // Middleware added here!
 router.get('/xss', authenticateToken, vuln_controller.xss_lab);
 
 router.get('/ssti', authenticateToken, vuln_controller.ssti);

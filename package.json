@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "cookie": "^0.4.1",
     "cookie-parser": "^1.4.6",
     "dotenv": "^14.2.0",
@@ -8,6 +9,7 @@
     "express": "^4.17.2",
     "express-fileupload": "^1.3.1",
     "express-graphql": "^0.12.0",
+    "helmet": "^8.2.0",
     "html-pdf-node": "^1.0.8",
     "jsonwebtoken": "^8.5.1",
     "libxmljs": "^0.19.7",
@@ -16,10 +18,13 @@
     "mysql2": "^2.3.3",
     "node-2fa": "^2.0.3",
     "node-serialize": "^0.0.4",
+    "nodemon": "^3.1.14",
     "pg": "^8.7.1",
     "request": "^2.88.2",
     "sequelize": "^6.12.5",
     "socket.io": "2.3.0",
+    "validator": "^13.15.35",
+    "winston": "^3.19.0",
     "x-xss-protection": "^2.0.0"
   },
   "scripts": {

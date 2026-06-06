@@ -1,15 +1,29 @@
+require('dotenv').config();
 const express = require('express');
+const helmet = require('helmet');
+const logger = require('./logger');
+
 const app = express();
 const router = require('./routes/app');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const {Users, Wallet} = require('./models/db');
 const request = require('request');
+const cookie = require('cookie');
 const path = require('path');
 const fileUpload = require('express-fileupload');
 
-require('dotenv').config();
-
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "script-src": ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+        "script-src-attr": ["'unsafe-inline'"],
+      },
+    },
+  })
+);
 app.use(cookieParser());
 
 app.use(express.urlencoded({extended: true}));
@@ -30,6 +44,7 @@ app.set('view engine', 'ejs');
 
 const server = app.listen(process.env.HOST_PORT, function() {
   console.log('Listening on port ', process.env.HOST_PORT);
+  logger.info('Application started successfully on port 3000'); 
 });
 
 const io = require('socket.io')(server);

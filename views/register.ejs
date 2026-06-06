@@ -2,40 +2,77 @@
 <html lang="en">
 
 <head>
+    <script src="https://cdn.tailwindcss.com"></script>
     <%- include ('includes/header.ejs') %>
 </head>
 
-<body>
-    <%- include ('includes/navigation.ejs') %>
-    <div class='container' style='min-height: 450px'>
-        <div class='row'>
-            <div class='col-md-12'>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <!-- <%- include ('includes/navigation.ejs') %> -->
+   <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800 text-center">Create Account</h2>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Username</label>
+                <input type="text" id="username" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter username">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" id="email" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter email">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Password</label>
+                <input type="password" id="password" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="••••••••">
+            </div>
+            
+            <!-- <button onclick="register()" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">
+                Register
+            </button> -->
+            <button id="register-btn" onclick="register()" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">Register</button>
+        </div>
 
-                <div class='row'>
-                    <div class='col-md-6 col-md-offset-3'>
-                        <div class='page-header'>
-                            <h2>Register</h2>
-                        </div>
-                        <div class="form-group">
-                            <label for="InputEmail1">Username</label>
-                            <input type="text" class="form-control" id="username" placeholder="Enter username">
-                        </div>
-                        <div class="form-group">
-                            <label for="InputEmail1">Email address</label>
-                            <input type="email" class="form-control" id="email" placeholder="Enter email">
-                        </div>
-                        <div class="form-group">
-                            <label for="InputPassword">Password</label>
-                            <input type="password" class="form-control" id="password" placeholder="Password">
-                        </div>
-                        <button type="submit" onclick="register()" class="btn btn-primary">Register</button> or <a
-                            href="/login">Login</a>
-                        <br><br>
-                        <div id="register-error">
+        <p class="mt-4 text-center text-sm text-gray-600">
+            Already have an account? <a href="/login" class="text-blue-600 hover:underline">Login</a>
+        </p>
 
-                        </div>
+        <div id="register-error" class="mt-4"></div>
+    </div>
+<script>
+    // Frontend Event Listener
+    document.getElementById('register-btn').addEventListener('click', function() {
+        var username = document.getElementById('username').value;
+        var email = document.getElementById('email').value;
+        var password = document.getElementById('password').value;
 
-                        <script>
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    // FIX HERE: JWT token plain text string hai, isay JSON.parse nahi karna!
+                    console.log("Registration Successful! Token received.");
+                    window.location = '/'; // Successful redirect to home
+                } else if (xhr.status === 403) {
+                    document.getElementById('register-error').innerHTML = `<div class="alert alert-danger" style="color:red;" role="alert">User already registered!</div>`;
+                } else if (xhr.status === 400) {
+                    document.getElementById('register-error').innerHTML = `<div class="alert alert-danger" style="color:red;" role="alert">${xhr.responseText}</div>`;
+                }
+            }
+        };
+
+        const data = 'username=' + encodeURIComponent(username) + '&email=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(password);
+        xhr.open('POST', window.location, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xhr.send(data);
+    });
+
+    // Safe check for logout button
+    var logoutBtn = document.getElementById("logout");
+    if(logoutBtn) {
+        logoutBtn.style.visibility = 'hidden';
+    }
+</script>
+                        <!-- <script>
                             function register() {
                                 console.log('test');
                                 var username = document.getElementById('username').value;
@@ -65,7 +102,7 @@
 
                             document.getElementById("logout").style.visibility = 'hidden'
 
-                        </script>
+                        </script> -->
 </body>
 
 </html>
