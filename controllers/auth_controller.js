@@ -1,11 +1,12 @@
 const md5 = require('md5');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
-const { Users, Org, Wallet } = require('../models/db');
+const { Users, Org, Wallet, sequelize } = require('../models/db');
 const jwt = require('jsonwebtoken');
 const emailvalidator = require('email-validator');
 const logger = require('../logger'); // WEEK 3: Security Logger import kiya
-
+// File ke bilkul upar jahan models import ho rahe hain:
+// const { sequelize, Users } = require('../models/db'); // Aapka path different ho sakta hai (e.g., './models' ya '../config/db')
 function generateAccessToken(username) {
   const payload = { 'username': username };
   return jwt.sign(payload, process.env.JWT_SECRET);
@@ -99,8 +100,10 @@ const logout_get = (req, res) => {
   res.redirect('/login');
 };
 
+// Secure & Fixed Code
 const login_get = (req, res) => {
-  res.render('login');
+    // req.csrfToken() se token generate kar ke frontend ko bhejein
+    res.render('login', { csrfToken: req.csrfToken() }); 
 };
 
 // WEEK 2 & 3 UPGRADE: Login authentication logic handles bcrypt safely
@@ -153,8 +156,17 @@ const login_post = async (req, res) => {
       console.log("Incoming plain text password:", password);
 
       // User ko database se dhoondein
-      const user = await Users.findOne({ where: { username: username } });
-
+      // const user = await Users.findOne({ where: { username: username } });
+// Is se replace karein (SQLi Remediation with Parameterized Query):
+const [results] = await sequelize.query(
+  "SELECT * FROM users WHERE username = ?", 
+  {
+    replacements: [username],
+    type: sequelize.QueryTypes.SELECT
+  }
+);
+// Kyunki raw query array return karti hai, isliye pehla element user hoga
+const user = results;
       if (!user) {
         console.log("❌ ERROR: Database mein is username ka koi user nahi mila:", username);
         return res.status(403).send('Invalid username/password.');

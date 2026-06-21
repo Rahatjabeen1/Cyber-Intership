@@ -1,91 +1,139 @@
-require('dotenv').config();
-const express = require('express');
-const helmet = require('helmet');
-const logger = require('./logger');
-
+require("dotenv").config();
+const express = require("express");
+const helmet = require("helmet");
+const logger = require("./logger");
+const rateLimit = require("express-rate-limit");
+const cors = require("cors");
 const app = express();
-const router = require('./routes/app');
-const cookieParser = require('cookie-parser');
-const jwt = require('jsonwebtoken');
-const {Users, Wallet} = require('./models/db');
-const request = require('request');
-const cookie = require('cookie');
-const path = require('path');
-const fileUpload = require('express-fileupload');
+const router = require("./routes/app");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
+const { Users, Wallet } = require("./models/db");
+const request = require("request");
+const cookie = require("cookie");
+const path = require("path");
+const fileUpload = require("express-fileupload");
+const csrf = require('csurf');
 
+app.use(cookieParser());
+app.use(csrf({ cookie: true })); // CSRF middleware active ho gaya
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        "script-src": ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+        "script-src": [
+          "'self'",
+          "'unsafe-inline'",
+          "https://cdn.tailwindcss.com",
+        ],
         "script-src-attr": ["'unsafe-inline'"],
+        // upgradeInsecureRequests: [], // Enforce HTTPS (HSTS)
       },
     },
-  })
+  }),
 );
+// 2. CORS Configuration (Task 2)
+app.use(
+  cors({
+    origin: "http://localhost:9000", // Restricted unauthorized access
+    optionsSuccessStatus: 200,
+  }),
+);
+// 3. API Rate Limiting to prevent Brute-Force (Task 2)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 100 requests per window
+  message: "Too many requests from this IP, please try again after 15 minutes.",
+});
+// app.use("/api/", apiLimiter);
+// app.use(apiLimiter); // Ab yeh har ek route aur page ko protect karega!
 app.use(cookieParser());
 
-app.use(express.urlencoded({extended: true}));
+app.use(express.urlencoded({ extended: true }));
 
 app.use(express.json());
 
 app.use(fileUpload());
 
-app.use(express.static('./uploads'));
+app.use(express.static("./uploads"));
 
 app.use(router);
 
-app.use(express.static('./assets'));
+app.use(express.static("./assets"));
 
-app.use(express.static(path.resolve(__dirname, './vuln_react_app/build')));
+app.use(express.static(path.resolve(__dirname, "./vuln_react_app/build")));
 
-app.set('view engine', 'ejs');
+app.set("view engine", "ejs");
 
-const server = app.listen(process.env.HOST_PORT, function() {
-  console.log('Listening on port ', process.env.HOST_PORT);
-  logger.info('Application started successfully on port 3000'); 
+const server = app.listen(process.env.HOST_PORT, function () {
+  console.log("Listening on port ", process.env.HOST_PORT);
+  logger.info("Application started successfully on port 3000");
 });
 
-const io = require('socket.io')(server);
+const io = require("socket.io")(server);
 io.use((socket, next) => {
-  const cookies = cookie.parse(socket.request.headers.cookie || '');
+  const cookies = cookie.parse(socket.request.headers.cookie || "");
   const jwt_token = cookies.authToken;
   if (jwt_token) {
     jwt.verify(jwt_token, process.env.JWT_SECRET, (err, user) => {
-      if (err) return next(new Error('Authentication error'));
-      Users.findOne({attributes: ['username'], where: {username: user.username}})
-          .then((queryResult) => {
-            if (queryResult == null) return next(new Error('User does not exist in database!'));
-            socket.user = queryResult;
-            next();
-          });
+      if (err) return next(new Error("Authentication error"));
+      Users.findOne({
+        attributes: ["username"],
+        where: { username: user.username },
+      }).then((queryResult) => {
+        if (queryResult == null)
+          return next(new Error("User does not exist in database!"));
+        socket.user = queryResult;
+        next();
+      });
     });
   } else {
-    next(new Error('Authentication error'));
+    next(new Error("Authentication error"));
   }
-})
-    .on('connection', function(socket) {
-      console.log('A new client is connected');
+}).on("connection", function (socket) {
+  console.log("A new client is connected");
 
-      socket.on('crypto_usd_value', function(message) {
-        Wallet.findOne({where: {username: socket.user.username}}, {attributes: ['BTC', 'ETH']})
-            .then((crypto_balance)=>{
-              const bitcoin_quantity = crypto_balance.BTC;
-              const ethereum_quantity = crypto_balance.ETH;
-              request('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin%2Cethereum&vs_currencies=usd', {json: true}, (err, res, body)=>{
-                if (err) {
-                  return console.log(err);
-                }
-                const bitcoin_usd_value = bitcoin_quantity * body.bitcoin.usd + Math.floor(Math.random() * 100);
-                const ethereum_usd_value = ethereum_quantity * body.ethereum.usd + Math.floor(Math.random() * 100);
-                const total_usd_value = bitcoin_usd_value + ethereum_usd_value + Math.floor(Math.random() * 100);
-                socket.emit('crypto_usd_value', {'user': socket.user.username, 'btc': bitcoin_usd_value, 'eth': ethereum_usd_value, 'total': total_usd_value});
-              });
-            });
-      });
-
-      socket.on('new_message', (data) => {
-        io.sockets.emit('new_message', {message: data.message, username: socket.user.username, login_user: socket.user.username});
-      });
+  socket.on("crypto_usd_value", function (message) {
+    Wallet.findOne(
+      { where: { username: socket.user.username } },
+      { attributes: ["BTC", "ETH"] },
+    ).then((crypto_balance) => {
+      const bitcoin_quantity = crypto_balance.BTC;
+      const ethereum_quantity = crypto_balance.ETH;
+      request(
+        "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin%2Cethereum&vs_currencies=usd",
+        { json: true },
+        (err, res, body) => {
+          if (err) {
+            return console.log(err);
+          }
+          const bitcoin_usd_value =
+            bitcoin_quantity * body.bitcoin.usd +
+            Math.floor(Math.random() * 100);
+          const ethereum_usd_value =
+            ethereum_quantity * body.ethereum.usd +
+            Math.floor(Math.random() * 100);
+          const total_usd_value =
+            bitcoin_usd_value +
+            ethereum_usd_value +
+            Math.floor(Math.random() * 100);
+          socket.emit("crypto_usd_value", {
+            user: socket.user.username,
+            btc: bitcoin_usd_value,
+            eth: ethereum_usd_value,
+            total: total_usd_value,
+          });
+        },
+      );
     });
+  });
+
+  socket.on("new_message", (data) => {
+    io.sockets.emit("new_message", {
+      message: data.message,
+      username: socket.user.username,
+      login_user: socket.user.username,
+    });
+  });
+});

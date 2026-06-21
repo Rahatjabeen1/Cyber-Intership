@@ -2,7 +2,6 @@
 <html lang="en">
 
 <head>
-    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
     <script src="https://cdn.tailwindcss.com"></script>
     <%- include ('includes/header.ejs') %>
 </head>
@@ -15,6 +14,8 @@
         </div>
 
         <div class="space-y-4">
+            <input type="hidden" id="csrfToken" value="<%= csrfToken %>">
+
             <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700">Username</label>
                 <input type="text" id="username" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Enter username">
@@ -41,26 +42,31 @@
         function login() {
             var username = document.getElementById('username').value;
             var password = document.getElementById('password').value;
+            // 1. JavaScript mein Token ki value uthaen
+            var csrfToken = document.getElementById('csrfToken').value;
 
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
                     window.location = xhr.responseText;
                 } else if(xhr.readyState === XMLHttpRequest.DONE && xhr.status === 403){
-                    // .textContent use karein taake XSS khatra kam ho
                     document.getElementById('login-error').innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded relative text-sm">Incorrect username/password!</div>`;
                 } else if(xhr.readyState === XMLHttpRequest.DONE && xhr.status === 400){
                     document.getElementById('login-error').innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded relative text-sm">Invalid username/password!</div>`;
                 }
             }
-            const data = 'username=' + username + '&password=' + password;
+            
+            // 2. Data string mein csrf token ko append karein
+            const data = 'username=' + encodeURIComponent(username) + 
+                         '&password=' + encodeURIComponent(password) + 
+                         '&_csrf=' + encodeURIComponent(csrfToken); // '_csrf' ya jo aapke server code mein expected ho
+
             xhr.open('POST', window.location, true);
             xhr.withCredentials = true;
             xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
             xhr.send(data);
         }
 
-        // Ensuring logout element exists before changing visibility to avoid errors
         const logoutBtn = document.getElementById("logout");
         if(logoutBtn) {
             logoutBtn.style.visibility = 'hidden';
